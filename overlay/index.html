@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Twitch Follow Alert</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main id="alert" aria-live="polite" aria-atomic="true">
+        <div class="shine" aria-hidden="true"></div>
+        <div id="avatarContainer">
+            <img id="avatar" src="/assets/avatar.svg" alt="Follower profile picture">
+        </div>
+        <div class="text">
+            <div id="username">TestFollower</div>
+            <div id="event">New Follower</div>
+        </div>
+        <svg id="timer" viewBox="0 0 36 36" aria-hidden="true">
+            <circle id="timerTrack" cx="18" cy="18" r="15"></circle>
+            <circle id="timerProgress" cx="18" cy="18" r="15"></circle>
+        </svg>
+    </main>
+
+    <aside id="tester" aria-label="Follow alert test controls">
+        <div class="debug-row">
+            <span id="connStatus" role="status">connecting…</span>
+            <button id="followBtn" type="button">Test follow</button>
+        </div>
+        <section id="twitchAuth" aria-label="Twitch authorization">
+            <h2>StreamFreezer · Twitch</h2>
+            <p id="twitchAuthStatus" role="status">Not connected to Twitch.</p>
+            <div id="twitchCodeBlock" hidden>
+                <p>Open Twitch activation and enter this code:</p>
+                <strong id="twitchUserCode"></strong>
+                <a id="twitchVerifyLink" href="https://www.twitch.tv/activate" target="_blank" rel="noopener noreferrer">Open Twitch activation</a>
+            </div>
+            <button id="connectTwitchBtn" type="button">Connect Twitch account</button>
+        </section>
+    </aside>
+
+    <!-- GSAP is kept for the existing animation; local hosting can be added later. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js" defer></script>
+    <script src="/script.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+:root {
+    color-scheme: dark;
+    font-family: Inter, "Segoe UI", sans-serif;
+    --alert-bg: rgba(40, 40, 42, 0.82);
+    --alert-text: #ffffff;
+    --event-text: rgba(255, 255, 255, 0.6);
+    --accent: #a78bfa;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+}
+
+#alert {
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    display: flex;
+    align-items: center;
+    gap: 26.4px;
+    min-width: 360px;
+    max-width: 576px;
+    height: 72px;
+    padding: 0 24px;
+    overflow: hidden;
+    border: 1.2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 48px;
+    background: var(--alert-bg);
+    box-shadow: 0 21.6px 54px rgba(0, 0, 0, 0.35), inset 0 1.2px 0 rgba(255, 255, 255, 0.06);
+    color: var(--alert-text);
+    opacity: 0;
+    --accent: #a78bfa;
+}
+
+#avatarContainer {
+    flex-shrink: 0;
+    width: 50.4px;
+    height: 50.4px;
+    overflow: hidden;
+    border: 2.4px solid color-mix(in srgb, var(--accent) 55%, rgba(255, 255, 255, 0.15));
+    border-radius: 50%;
+    box-shadow: 0 4.8px 16.8px rgba(0, 0, 0, 0.35);
+}
+
+#avatar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.text {
+    min-width: 0;
+}
+
+#username {
+    overflow: hidden;
+    font-size: 20.4px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+#event {
+    color: var(--event-text);
+    font-size: 16.8px;
+    font-weight: 300;
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+.shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.05), transparent);
+    pointer-events: none;
+}
+
+#timer {
+    flex-shrink: 0;
+    width: 38.4px;
+    height: 38.4px;
+    margin-left: auto;
+    transform: rotate(-90deg);
+}
+
+#timer circle {
+    fill: none;
+    stroke-width: 3;
+}
+
+#timerTrack {
+    stroke: rgba(255, 255, 255, 0.15);
+}
+
+#timerProgress {
+    stroke: var(--accent, white);
+    stroke-linecap: round;
+}
+
+#tester {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    max-width: min(420px, calc(100vw - 48px));
+    font-family: "Segoe UI", sans-serif;
+}
+
+#tester.visible {
+    display: flex;
+}
+
+.debug-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#twitchAuth {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #444;
+    border-radius: 10px;
+    background: rgba(20, 20, 22, 0.96);
+    color: #f5f5f5;
+}
+
+#twitchAuth h2,
+#twitchAuth p {
+    margin: 0;
+}
+
+#twitchAuth h2 {
+    font-size: 15px;
+    font-weight: 650;
+}
+
+#twitchAuth p {
+    color: #c7c7c7;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+#twitchCodeBlock {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #454545;
+    border-radius: 8px;
+}
+
+#twitchCodeBlock[hidden] {
+    display: none;
+}
+
+#twitchUserCode {
+    font-size: 25px;
+    letter-spacing: 0.12em;
+}
+
+#twitchAuth a {
+    width: fit-content;
+    color: #c4b5fd;
+    font-size: 13px;
+}
+
+#tester button {
+    padding: 10px 18px;
+    border: 1px solid #666;
+    border-radius: 8px;
+    background: #2d2d2d;
+    color: #fff;
+    cursor: pointer;
+}
+
+#tester button:hover {
+    background: #454545;
+}
+
+#tester button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+}
+
+#connStatus {
+    padding: 6px 12px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #aaa;
+    font-size: 13px;
+}
+
+#connStatus.connected {
+    border-color: #2f6b45;
+    color: #6ee7a0;
+}
+
+#connStatus.error {
+    border-color: #7a3535;
+    color: #f28b8b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #alert,
+    #username,
+    #event {
+        transform: none;
+    }
+}
