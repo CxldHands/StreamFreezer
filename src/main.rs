@@ -1,7 +1,8 @@
-mod eventsub;
-mod messages;
-mod twitch_auth;
+mod core;
+mod twitch;
 
+use crate::core::messages::ServerMessage;
+use crate::twitch::auth::{AuthStatus, TwitchAuth};
 use axum::{
     Router,
     extract::{
@@ -13,13 +14,11 @@ use axum::{
     routing::{get, post},
 };
 use futures_util::{SinkExt, StreamExt};
-use messages::ServerMessage;
 use std::{
     net::SocketAddr,
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::broadcast;
-use twitch_auth::{AuthStatus, TwitchAuth};
 
 const HOST: [u8; 4] = [127, 0, 0, 1];
 const PORT: u16 = 3001;
@@ -48,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     tokio::spawn(async move {
-        eventsub::run(eventsub_auth, eventsub_sender).await;
+        twitch::eventsub::run(eventsub_auth, eventsub_sender).await;
     });
 
     let app = Router::new()

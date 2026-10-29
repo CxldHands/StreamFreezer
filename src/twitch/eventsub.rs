@@ -1,6 +1,6 @@
 use crate::{
-    messages::ServerMessage,
-    twitch_auth::{CLIENT_ID, TwitchAuth},
+    core::messages::ServerMessage,
+    twitch::auth::{CLIENT_ID, TwitchAuth},
 };
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
