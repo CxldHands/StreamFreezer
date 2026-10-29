@@ -1,3 +1,7 @@
+// ─────────────────────────────────────────────
+// Imports
+// ─────────────────────────────────────────────
+
 use keyring::Entry;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -5,14 +9,25 @@ use serde_json::Value;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
+// ─────────────────────────────────────────────
+// Twitch OAuth Configuration
+// ─────────────────────────────────────────────
+
 pub const CLIENT_ID: &str = "evukj98bxv530lwircj1te458ypd01";
+
 const EXPECTED_LOGIN: &str = "cxldhands";
 const REQUIRED_SCOPE: &str = "moderator:read:followers";
+
 const DEVICE_URL: &str = "https://id.twitch.tv/oauth2/device";
 const TOKEN_URL: &str = "https://id.twitch.tv/oauth2/token";
 const VALIDATE_URL: &str = "https://id.twitch.tv/oauth2/validate";
+
 const KEYRING_SERVICE: &str = "StreamFreezer";
 const KEYRING_USER: &str = "twitch-oauth";
+
+// ─────────────────────────────────────────────
+// Authentication State Types
+// ─────────────────────────────────────────────
 
 #[derive(Clone)]
 pub struct TwitchAuth {
@@ -37,6 +52,10 @@ pub struct AuthStatus {
     pub scopes: Vec<String>,
 }
 
+// ─────────────────────────────────────────────
+// Default Authentication Status
+// ─────────────────────────────────────────────
+
 impl Default for AuthStatus {
     fn default() -> Self {
         Self {
@@ -50,6 +69,10 @@ impl Default for AuthStatus {
         }
     }
 }
+
+// ─────────────────────────────────────────────
+// Twitch API Response Types
+// ─────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 struct DeviceCodeResponse {
@@ -80,7 +103,15 @@ struct StoredTokens {
     refresh_token: String,
 }
 
+// ─────────────────────────────────────────────
+// Authentication Manager
+// ─────────────────────────────────────────────
+
 impl TwitchAuth {
+    // ─────────────────────────────────────────
+    // Initialization and Status
+    // ─────────────────────────────────────────
+
     pub fn new() -> Self {
         Self {
             client: Client::new(),
@@ -91,6 +122,10 @@ impl TwitchAuth {
     pub async fn status(&self) -> AuthStatus {
         self.status.lock().await.clone()
     }
+
+    // ─────────────────────────────────────────
+    // Restore Saved Session
+    // ─────────────────────────────────────────
 
     pub async fn restore_saved_session(&self) {
         let entry = match Entry::new(KEYRING_SERVICE, KEYRING_USER) {
@@ -142,7 +177,9 @@ impl TwitchAuth {
                 current.scopes = validated.scopes;
                 current.expires_in = Some(validated.expires_in);
             }
+
             _ => {
+                // Attempt to refresh the saved token if validation fails.
                 let refresh_response = self
                     .client
                     .post(TOKEN_URL)
@@ -168,10 +205,19 @@ impl TwitchAuth {
                             }
                         }
                     }
+
                     Ok(response) => {
-                        set_error(&self.status, format!("Saved Twitch authorization needs reconnecting (refresh returned HTTP {}).", response.status())).await;
+                        set_error(
+                            &self.status,
+                            format!(
+                                "Saved Twitch authorization needs reconnecting (refresh returned HTTP {}).",
+                                response.status()
+                            ),
+                        )
+                        .await;
                         return;
                     }
+
                     Err(error) => {
                         set_error(
                             &self.status,
@@ -196,6 +242,10 @@ impl TwitchAuth {
             }
         }
     }
+
+    // ─────────────────────────────────────────
+    // EventSub Credentials
+    // ─────────────────────────────────────────
 
     pub async fn eventsub_credentials(&self) -> Result<EventSubCredentials, String> {
         let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)
@@ -229,13 +279,15 @@ impl TwitchAuth {
         })
     }
 
+    // ─────────────────────────────────────────
+    // Start Device Code Authorization
+    // ─────────────────────────────────────────
+
     pub async fn start(&self) -> Result<AuthStatus, String> {
         {
             let status = self.status.lock().await;
-            if status.state == "authorizing" {
-                return Ok(status.clone());
-            }
-            if status.state == "connected" {
+
+            if status.state == "authorizing" || status.state == "connected" {
                 return Ok(status.clone());
             }
         }
@@ -251,6 +303,7 @@ impl TwitchAuth {
         if !response.status().is_success() {
             let status_code = response.status();
             let body = response.text().await.unwrap_or_default();
+
             return Err(format!(
                 "Twitch rejected device authorization ({status_code}): {body}"
             ));
@@ -270,10 +323,12 @@ impl TwitchAuth {
             login: None,
             scopes: Vec::new(),
         };
+
         *self.status.lock().await = new_status.clone();
 
         let client = self.client.clone();
         let status = Arc::clone(&self.status);
+
         tokio::spawn(async move {
             poll_device_authorization(client, status, device).await;
         });
@@ -281,6 +336,10 @@ impl TwitchAuth {
         Ok(new_status)
     }
 }
+
+// ─────────────────────────────────────────────
+// Device Code Authorization Polling
+// ─────────────────────────────────────────────
 
 async fn poll_device_authorization(
     client: Client,
@@ -316,6 +375,7 @@ async fn poll_device_authorization(
         };
 
         let status_code = response.status();
+
         let body = match response.text().await {
             Ok(body) => body,
             Err(error) => {
@@ -354,23 +414,28 @@ async fn poll_device_authorization(
                 }
                 Err(error) => set_error(&status, error).await,
             }
+
             return;
         }
 
         let error_body: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+
         match error_body
             .get("message")
             .and_then(Value::as_str)
             .or_else(|| error_body.get("error").and_then(Value::as_str))
         {
             Some("authorization_pending") => continue,
+
             Some("slow_down") => {
                 interval = interval.saturating_add(5);
             }
+
             Some("access_denied") => {
                 set_error(&status, "Twitch authorization was denied.".to_owned()).await;
                 return;
             }
+
             Some("expired_token") => {
                 set_error(
                     &status,
@@ -380,10 +445,12 @@ async fn poll_device_authorization(
                 .await;
                 return;
             }
+
             Some(message) => {
                 set_error(&status, format!("Twitch authorization failed: {message}")).await;
                 return;
             }
+
             None => {
                 set_error(
                     &status,
@@ -401,6 +468,10 @@ async fn poll_device_authorization(
     )
     .await;
 }
+
+// ─────────────────────────────────────────────
+// Token Validation
+// ─────────────────────────────────────────────
 
 async fn validate_token(client: &Client, access_token: &str) -> Result<ValidatedToken, String> {
     let response = client
@@ -422,6 +493,10 @@ async fn validate_token(client: &Client, access_token: &str) -> Result<Validated
         .await
         .map_err(|error| format!("Twitch returned an invalid token validation response: {error}"))
 }
+
+// ─────────────────────────────────────────────
+// Validate and Persist Credentials
+// ─────────────────────────────────────────────
 
 async fn validate_and_store(
     client: &Client,
@@ -449,13 +524,15 @@ async fn validate_and_store(
 
     let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|error| format!("Could not access Windows Credential Manager: {error}"))?;
+
     let serialized = serde_json::to_string(&stored)
         .map_err(|error| format!("Could not prepare Twitch credentials for storage: {error}"))?;
+
     entry.set_password(&serialized).map_err(|error| {
         format!("Could not save Twitch credentials to Windows Credential Manager: {error}")
     })?;
 
-    // Verify the saved credentials can be read back.
+    // Verify that the credentials can be read back accurately.
     let saved_check = entry.get_password().map_err(|error| {
         format!("Twitch credentials were saved but could not be read back: {error}")
     })?;
@@ -469,14 +546,23 @@ async fn validate_and_store(
     Ok(validated)
 }
 
+// ─────────────────────────────────────────────
+// Authentication Error State
+// ─────────────────────────────────────────────
+
 async fn set_error(status: &Arc<Mutex<AuthStatus>>, message: String) {
     let mut current = status.lock().await;
+
     current.state = "error".to_owned();
     current.message = message;
     current.user_code = None;
     current.verification_uri = None;
     current.expires_in = None;
 }
+
+// ─────────────────────────────────────────────
+// Authentication Tests
+// ─────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -485,8 +571,11 @@ mod tests {
     #[test]
     fn default_status_is_disconnected_and_does_not_expose_tokens() {
         let status = AuthStatus::default();
+
         assert_eq!(status.state, "disconnected");
+
         let json = serde_json::to_value(status).expect("status should serialize");
+
         assert!(json.get("access_token").is_none());
         assert!(json.get("refresh_token").is_none());
     }

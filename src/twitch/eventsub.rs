@@ -1,7 +1,12 @@
+// ─────────────────────────────────────────────
+// Imports
+// ─────────────────────────────────────────────
+
 use crate::{
     core::messages::ServerMessage,
     twitch::auth::{CLIENT_ID, TwitchAuth},
 };
+
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use serde_json::{Value, json};
@@ -12,14 +17,27 @@ use std::{
 use tokio::sync::broadcast;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
+// ─────────────────────────────────────────────
+// EventSub Configuration
+// ─────────────────────────────────────────────
+
 const EVENTSUB_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
 const SUBSCRIPTIONS_URL: &str = "https://api.twitch.tv/helix/eventsub/subscriptions";
+
 const MAX_RECENT_MESSAGE_IDS: usize = 512;
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
+
+// ─────────────────────────────────────────────
+// Connection Outcome
+// ─────────────────────────────────────────────
 
 enum ConnectionOutcome {
     Disconnected,
 }
+
+// ─────────────────────────────────────────────
+// EventSub Worker
+// ─────────────────────────────────────────────
 
 pub async fn run(auth: TwitchAuth, event_sender: broadcast::Sender<ServerMessage>) {
     let mut recent_ids = HashSet::new();
@@ -37,6 +55,7 @@ pub async fn run(auth: TwitchAuth, event_sender: broadcast::Sender<ServerMessage
                 println!("Twitch EventSub disconnected; reconnecting.");
                 tokio::time::sleep(RECONNECT_DELAY).await;
             }
+
             Err(error) => {
                 eprintln!("Twitch EventSub error: {error}");
                 tokio::time::sleep(RECONNECT_DELAY).await;
@@ -44,6 +63,10 @@ pub async fn run(auth: TwitchAuth, event_sender: broadcast::Sender<ServerMessage
         }
     }
 }
+
+// ─────────────────────────────────────────────
+// EventSub Connection
+// ─────────────────────────────────────────────
 
 async fn run_connection(
     auth: &TwitchAuth,
@@ -126,6 +149,10 @@ async fn run_connection(
 
     subscribe_to_follows(&credentials.access_token, &credentials.user_id, session_id).await?;
 
+    // ─────────────────────────────────────────
+    // Process EventSub Messages
+    // ─────────────────────────────────────────
+
     while let Some(result) = reader.next().await {
         let message = result.map_err(|error| format!("EventSub WebSocket read failed: {error}"))?;
 
@@ -154,6 +181,9 @@ async fn run_connection(
                         .await;
                     }
 
+                    // ─────────────────────────────────
+                    // EventSub Reconnect Migration
+                    // ─────────────────────────────────
                     Some("session_reconnect") => {
                         let reconnect_url = value["payload"]["session"]["reconnect_url"]
                             .as_str()
@@ -251,13 +281,17 @@ async fn run_connection(
                                 "Replacement EventSub welcome has no session ID.".to_owned()
                             })?;
 
-                        // The replacement is ready. Swapping the halves drops the old connection.
+                        // Twitch migrates subscriptions to the replacement session.
+                        // Swap connections only after the replacement has been welcomed.
                         writer = new_writer;
                         reader = new_reader;
 
                         println!("EventSub reconnect migration completed.");
                     }
 
+                    // ─────────────────────────────────
+                    // Subscription Revocation
+                    // ─────────────────────────────────
                     Some("revocation") => {
                         eprintln!(
                             "Twitch revoked an EventSub subscription: {}",
@@ -294,6 +328,10 @@ async fn run_connection(
 
     Ok(ConnectionOutcome::Disconnected)
 }
+
+// ─────────────────────────────────────────────
+// Follow Subscription
+// ─────────────────────────────────────────────
 
 async fn subscribe_to_follows(
     access_token: &str,
@@ -334,8 +372,13 @@ async fn subscribe_to_follows(
     }
 
     println!("Subscribed to channel.follow v2 for broadcaster ID {user_id}.");
+
     Ok(())
 }
+
+// ─────────────────────────────────────────────
+// Follow Notification Processing
+// ─────────────────────────────────────────────
 
 async fn publish_follow(
     message: &Value,
@@ -398,6 +441,10 @@ async fn publish_follow(
     }
 }
 
+// ─────────────────────────────────────────────
+// Twitch Profile Image Lookup
+// ─────────────────────────────────────────────
+
 async fn fetch_avatar(client: &Client, access_token: &str, user_id: &str) -> Option<String> {
     let response = client
         .get("https://api.twitch.tv/helix/users")
@@ -415,7 +462,6 @@ async fn fetch_avatar(client: &Client, access_token: &str, user_id: &str) -> Opt
     }
 
     let body: Value = response.json().await.ok()?;
-
     let avatar = body["data"][0]["profile_image_url"].as_str()?;
 
     if avatar.starts_with("https://") {
@@ -424,6 +470,10 @@ async fn fetch_avatar(client: &Client, access_token: &str, user_id: &str) -> Opt
         None
     }
 }
+
+// ─────────────────────────────────────────────
+// EventSub Message Deduplication
+// ─────────────────────────────────────────────
 
 fn remember_message_id(
     event_id: &str,

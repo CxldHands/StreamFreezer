@@ -1,4 +1,12 @@
+// ─────────────────────────────────────────────
+// Imports
+// ─────────────────────────────────────────────
+
 use serde::Serialize;
+
+// ─────────────────────────────────────────────
+// Server-to-Overlay Message Types
+// ─────────────────────────────────────────────
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -10,6 +18,10 @@ pub enum ServerMessage {
         avatar: String,
     },
 }
+
+// ─────────────────────────────────────────────
+// Message Serialization Tests
+// ─────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -24,6 +36,7 @@ mod tests {
         };
 
         let json = serde_json::to_value(message).expect("message should serialize");
+
         assert_eq!(json["type"], "follow");
         assert_eq!(json["event_id"], "synthetic-123");
         assert_eq!(json["user"], "TestFollower");
@@ -34,6 +47,7 @@ mod tests {
     fn connected_message_has_a_stable_type() {
         let json =
             serde_json::to_value(ServerMessage::Connected).expect("message should serialize");
+
         assert_eq!(json["type"], "connected");
     }
 }
